@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .nav-pills .nav-link {
+      border-radius: 0;
+    }
+    .tab-content {
+      padding: 20px;
+    }
+    .tab-pane {
+      display: none;
+    }
+    .tab-pane.active {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav class="nav nav-pills nav-fill" id="myTab" role="tablist">
+      <? var sheetNames = Object.keys(data).reverse(); // Invertir el orden de las hojas ?>
+      <? for (var i = 0; i < sheetNames.length; i++) { 
+        var sheetName = sheetNames[i];
+        // Normaliza el nombre de la hoja para usarlo como ID
+        var tabId = sheetName.replace(/\s+/g, '_').toLowerCase();
+      ?>
+        <a class="nav-item nav-link <?= i === 0 ? 'active' : '' ?>" id="<?= tabId ?>-tab" href="#<?= tabId ?>" role="tab"><?= sheetName ?></a>
+      <? } ?>
+    </nav>
+    <div class="tab-content" id="myTabContent">
+      <? for (var i = 0; i < sheetNames.length; i++) { 
+        var sheetName = sheetNames[i];
+        // Normaliza el nombre de la hoja para usarlo como ID
+        var tabId = sheetName.replace(/\s+/g, '_').toLowerCase();
+      ?>
+        <div class="tab-pane <?= i === 0 ? 'active' : '' ?>" id="<?= tabId ?>" role="tabpanel">
+          <div class="row">
+            <? for (var j = 0; j < data[sheetName].length; j++) { ?>
+              <div class="col-md-4">
+                <div class="card">
+                  <div class="card-body">
+                    <h5 class="card-title"><?= data[sheetName][j].asignatura ?></h5>
+                    <p class="card-text">Profesor: <?= data[sheetName][j].profesor ?></p>
+                    <a href="<?= data[sheetName][j].enlace ?>" class="btn btn-primary" target="_blank">Abrir Formulario</a>
+                  </div>
+                </div>
+              </div>
+            <? } ?>
+          </div>
+        </div>
+      <? } ?>
+    </div>
+  </div>
+  <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+  <script>
+    $(document).ready(function() {
+      // Handle tab click event
+      $('.nav-link').on('click', function(event) {
+        event.preventDefault();
+        var targetId = $(this).attr('href').substring(1); // Extract the target ID from href
+        // Remove active class from all tabs and tab panes
+        $('.nav-link').removeClass('active');
+        $('.tab-pane').removeClass('active');
+        // Add active class to the clicked tab and the corresponding tab pane
+        $(this).addClass('active');
+        $('#' + targetId).addClass('active');
+      });
+
+      // Trigger click on the first tab to display its content on load
+      $('.nav-link.active').click();
+    });
+  </script>
+</body>
+</html>
