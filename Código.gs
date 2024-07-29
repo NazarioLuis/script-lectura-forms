@@ -19,12 +19,27 @@ function listFormsInSubfolders() {
     return lines;
   }
 
+  // Función para verificar si el formulario acepta respuestas
+  function isAcceptingResponses(formId) {
+    var form = FormApp.openById(formId);
+    return form.isAcceptingResponses();
+  }
+
+  //Regla para convertir celda en checkbox
+  var rule = SpreadsheetApp.newDataValidation().requireCheckbox().build();
+
   // Función para listar formularios en una carpeta dada
   function listFormsInFolder(folder, sheet) {
     sheet.clear(); // Borra el contenido actual
-    sheet.appendRow(['Nombre del Formulario', 'Enlace del Formulario', 'Asignatura', 'Profesor']);
 
+    // Limpia las reglas de validación de toda la columna "Acepta Respuestas"
+    sheet.getRange('E:E').clearDataValidations();
+
+    sheet.appendRow(['Nombre del Formulario', 'Enlace del Formulario', 'Asignatura', 'Profesor', 'Acepta Respuestas','ID']);
+    
     var files = folder.getFiles();
+
+    var row = 2; // La fila donde empiezan los datos
     while (files.hasNext()) {
       var file = files.next();
       if (file.getMimeType() === 'application/vnd.google-apps.form') {
@@ -34,8 +49,30 @@ function listFormsInSubfolders() {
         var formHeader = getFormHeader(formId); // Obtiene el encabezado del formulario
         var asignatura = formHeader[5] || ''; // Manejo de índices fuera de rango
         var profesor = formHeader[6] || ''; // Manejo de índices fuera de rango
-        sheet.appendRow([fileName, fileUrl, asignatura, profesor]);
+        var acceptingResponses = isAcceptingResponses(formId); // Verifica si el formulario acepta respuestas
+        sheet.appendRow([fileName, fileUrl, asignatura, profesor, acceptingResponses,formId]);
+        var cell = sheet.getRange(row, 5);
+        cell.setDataValidation(rule);
+        row++;
       }
+    }
+
+    // Ajusta el ancho de las columnas al contenido
+    for (var col = 1; col <= 5; col++) {
+      if (col < 3) { 
+        sheet.setColumnWidth(col, 200); 
+      } else {
+        sheet.autoResizeColumn(col);
+      }
+    }
+    //Oculta el id del formulario
+    sheet.hideColumns(6);
+
+    // Ordena los datos por la columna "Asignatura" (columna C)
+    var lastRow = sheet.getLastRow();
+    if (lastRow > 1) {
+      var range = sheet.getRange('A2:F' + lastRow); // Rango que incluye los datos
+      range.sort([{column: 3, ascending: true}]); // Ordena por la columna C (Asignatura)
     }
   }
 
@@ -48,15 +85,26 @@ function listFormsInSubfolders() {
     }
   }
 
+  var subfoldersArray = [];
   var subfolders = parentFolder.getFolders();
-  if (subfolders.hasNext()) {
-    var firstSubfolder = subfolders.next();
+  while (subfolders.hasNext()) {
+    var subfolder = subfolders.next();
+    subfoldersArray.push(subfolder);
+  }
+
+  // Ordena las subcarpetas alfabéticamente por nombre
+  subfoldersArray.sort(function(a, b) {
+    return a.getName().localeCompare(b.getName());
+  });
+
+  if (subfoldersArray.length > 0) {
+    var firstSubfolder = subfoldersArray[0];
     var firstSubfolderName = firstSubfolder.getName();
     activeSheet.setName(firstSubfolderName); // Renombra la hoja activa con el nombre de la primera subcarpeta
     listFormsInFolder(firstSubfolder, activeSheet); // Lista los formularios en la primera subcarpeta en la hoja activa
 
-    while (subfolders.hasNext()) {
-      var subfolder = subfolders.next();
+    for (var i = 1; i < subfoldersArray.length; i++) {
+      var subfolder = subfoldersArray[i];
       var subfolderName = subfolder.getName();
       var sheetName = subfolderName.length > 99 ? subfolderName.substring(0, 99) : subfolderName; // Google Sheets permite nombres de hasta 100 caracteres
       var existingSheet = spreadsheet.getSheetByName(sheetName);
@@ -68,6 +116,27 @@ function listFormsInSubfolders() {
     }
   }
 }
+
+
+
+// Función que maneja los cambios en la hoja de cálculo
+function onEdit(e) {
+  var sheet = e.range.getSheet();
+  var range = e.range;
+  var row = range.getRow();
+  var col = range.getColumn();
+
+  // Verifica si el cambio está en la columna "Acepta Respuestas" (columna 5)
+  if (col === 5 && row > 1) {
+    var acceptingResponses = range.getValue();
+    var formId = sheet.getRange(row, 6).getValue(); // Obtiene el ID del formulario de la columna 6
+    var form = FormApp.openById(formId);
+    
+    // Actualiza el estado de aceptación de respuestas del formulario
+    form.setAcceptingResponses(acceptingResponses);
+  }
+}
+
 
 function generateCardView() {
   var htmlOutput = HtmlService.createTemplateFromFile('Index');
